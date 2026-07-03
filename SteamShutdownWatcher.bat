@@ -18,7 +18,7 @@ echo Steam Shutdown Watcher
 echo.
 echo Start this BAT before or during a Steam download.
 echo It finds Steam and Steam library folders automatically.
-echo If Steam download/install files stay quiet for 5 minutes, Windows shuts down.
+echo If Steam download/install files stop changing for 5 minutes, Windows shuts down.
 echo.
 echo A log is saved next to this BAT: SteamShutdownWatcher.log
 echo Close this window or press Ctrl+C to stop.
@@ -249,7 +249,7 @@ Write-Log "Steam libraries:"
 foreach ($library in $libraries) { Write-Log "  $library" }
 Write-Log "Armed immediately. Shutdown after $QuietMinutes quiet minute(s)."
 Write-Log "Quiet means: no changes in Steam download/install folders and appmanifest files."
-Write-Log "Only steamapps\downloading blocks the timer; temp folders are watched for changes only."
+Write-Log "Leftover steamapps\downloading folders are allowed if they stop changing."
 if ($DryRun) {
     Write-Log 'Dry-run mode. The computer will NOT shut down.'
 } else {
@@ -272,17 +272,15 @@ try {
             continue
         }
 
-        if ($blockingFolders.Count -gt 0) {
-            $quietSince = Get-Date
-            Write-Log "Steam still has active download/install folder(s): $($blockingFolders.Count)"
-            continue
-        }
-
         $elapsed = ((Get-Date) - $quietSince).TotalSeconds
         $remaining = [math]::Max(0, $quietSeconds - $elapsed)
 
         if ($remaining -gt 0) {
-            Write-Log ("Steam is quiet for {0:N0}s; waiting {1:N0}s more." -f $elapsed, $remaining)
+            if ($blockingFolders.Count -gt 0) {
+                Write-Log ("Steam is quiet for {0:N0}s; waiting {1:N0}s more. Leftover downloading folder(s): {2}" -f $elapsed, $remaining, $blockingFolders.Count)
+            } else {
+                Write-Log ("Steam is quiet for {0:N0}s; waiting {1:N0}s more." -f $elapsed, $remaining)
+            }
             continue
         }
 
